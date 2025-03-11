@@ -112,12 +112,10 @@ def image_to_numpy(image: QImage) -> np.ndarray:
     """
     Convert a QImage to a numpy array.
 
-    Args:
-        image: Input QImage
-
-    Returns:
-        np.ndarray: Numpy array with shape (height, width, 4) in BGRA format
+    :param image: Input QImage object
+    :return: Numpy array with shape (height, width, 4) in BGRA format
     """
+
     # Ensure the QImage is in the format of 32-bit ARGB (4 channels)
     image = image.convertToFormat(QImage.Format_ARGB32)
 
@@ -135,110 +133,29 @@ def image_to_numpy(image: QImage) -> np.ndarray:
     return img_array
 
 
-def numpy_to_image(img_array: np.ndarray) -> QImage:
+def numpy_to_image(img_array: np.ndarray) -> QImage | None:
     """
-    Convert a numpy array to a QImage.
+    Converts a NumPy array to a QImage.
 
-    Args:
-        img_array: Numpy array with shape (height, width, 4) in BGRA format
-
-    Returns:
-        QImage created from the array
+    :param img_array: Input image as a NumPy array in Grayscale or BGRA format.
+    :return: Corresponding QImage object if successful, otherwise None.
     """
-    # Ensure that the NumPy array has the shape (height, width, 4)
-    if len(img_array.shape) != 3 or img_array.shape[2] != 4:
-        raise ValueError("Array must have shape (height, width, 4)")
 
-    height, width, _ = img_array.shape
+    # Ensure array is contiguous and uint8
+    img_array = np.ascontiguousarray(img_array).astype(np.uint8)
 
-    # Create a copy of the array to ensure it's contiguous
-    img_array = np.ascontiguousarray(img_array)
+    # Grayscale image
+    if len(img_array.shape) == 2:
+        height, width = img_array.shape
+        logger.debug(f"Converting grayscale image ({width}x{height}) to QImage.")
+        return QImage(img_array.data, width, height, width, QImage.Format_Grayscale8)
 
-    # Convert the NumPy array to QImage
-    image = QImage(img_array.data, width, height, img_array.strides[0], QImage.Format_ARGB32)
+    # BGRA image
+    elif len(img_array.shape) == 3 and img_array.shape[2] == 4:
+        height, width, channels = img_array.shape
+        logger.debug(f"Converting BGRA image ({width}x{height}) to QImage.")
+        return QImage(img_array.data, width, height, width * channels, QImage.Format_ARGB32)
 
-    # Create a deep copy to ensure the data is owned by the QImage
-    image = image.copy()
-
-    return image
-
-
-# def image_to_torch(image: QImage, normalize: bool = True) -> torch.Tensor:
-#     """
-#     Convert a QImage to a PyTorch tensor in RGBA format (C,H,W).
-#
-#     Args:
-#         image: Input QImage
-#         normalize: If True, normalize values to [0,1]
-#
-#     Returns:
-#         torch.Tensor: PyTorch tensor with shape (4,H,W) in RGBA format
-#     """
-#     # Check if conversion is needed
-#     if image.format() != QImage.Format_ARGB32:
-#         image = image.convertToFormat(QImage.Format_ARGB32)
-#
-#     # Get dimensions
-#     height, width = image.height(), image.width()
-#
-#     # Get raw data
-#     bits = image.constBits()
-#     buffer_size = image.sizeInBytes()
-#
-#     # Create a mutable copy of the buffer to avoid warning
-#     buffer_copy = bytearray(bits[:buffer_size])
-#     tensor = torch.frombuffer(buffer_copy, dtype=torch.uint8)
-#
-#     # Reshape and reorder channels from BGRA to RGBA
-#     tensor = tensor.reshape(height, width, 4)
-#     r = tensor[:, :, 2]
-#     g = tensor[:, :, 1]
-#     b = tensor[:, :, 0]
-#     a = tensor[:, :, 3]
-#     tensor = torch.stack([r, g, b, a], dim=0)
-#
-#     if normalize:
-#         tensor = tensor.float() / 255.0
-#
-#     return tensor
-#
-#
-# def torch_to_image(tensor: torch.Tensor, denormalize: bool = True) -> QImage:
-#     """
-#     Convert a PyTorch tensor to a QImage efficiently using buffer operations.
-#     Supports (C, H, W) and (H, W) formats.
-#     """
-#     # Clone and move to CPU
-#     tensor = tensor.clone().cpu()
-#
-#     # Ensure dtype is uint8
-#     if denormalize and tensor.dtype != torch.uint8:
-#         tensor = (tensor * 255).clamp(0, 255).to(torch.uint8)
-#     else:
-#         tensor = tensor.to(torch.uint8)
-#
-#     # Handle grayscale case (H, W) instead of (C, H, W)
-#     if tensor.dim() == 2:
-#         tensor = tensor.unsqueeze(0)  # Convert (H, W) to (1, H, W)
-#
-#     channels, height, width = tensor.shape
-#
-#     if channels == 1:
-#         buffer = tensor.squeeze(0).contiguous().numpy().tobytes()
-#         return QImage(buffer, width, height, width, QImage.Format_Grayscale8)
-#
-#     elif channels == 3:
-#         tensor = tensor.permute(1, 2, 0).contiguous()
-#         buffer = tensor.numpy().tobytes()
-#         return QImage(buffer, width, height, width * 3, QImage.Format_RGB888)
-#
-#     elif channels == 4:
-#         tensor_rgba = tensor.permute(1, 2, 0).contiguous()
-#         tensor_bgra = tensor_rgba.clone()
-#         tensor_bgra[:, :, [0, 2]] = tensor_rgba[:, :, [2, 0]]  # Swap R and B
-#
-#         buffer = tensor_bgra.numpy().tobytes()
-#         return QImage(buffer, width, height, width * 4, QImage.Format_ARGB32)
-#
-#     else:
-#         raise ValueError(f"Unsupported channels: {channels}. Expected 1, 3, or 4.")
+    # Unsupported format
+    logger.warning(f"Unsupported array format: shape {img_array.shape}, dtype {img_array.dtype}")
+    return None

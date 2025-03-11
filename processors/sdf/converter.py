@@ -98,7 +98,25 @@ def analyze_image_channels(image: np.ndarray) -> List[bool]:
 
 
 def compute_multichannel_sdf(img_array: np.ndarray, max_rel_distance: float = 0.1,
-                             downsample_factor: int = 4, threshold: int = 127) -> np.ndarray:
+                             downsample_factor: int = 4, threshold: int = 127) -> np.ndarray | None:
+    """
+    Computes a multi-channel Signed Distance Field (SDF) from a given image.
+
+    This function analyzes each channel of an image to determine if it contains meaningful information.
+    If only one channel is relevant, it computes a single-channel SDF. Otherwise, it computes an SDF
+    for each relevant channel and combines them into a 4-channel output.
+
+    :param img_array: Input image as a NumPy array in RGBA format (shape: HxWx4, dtype: uint8).
+    :param max_rel_distance: Maximum relative distance for SDF computation (0-1 range).
+    :param downsample_factor: Factor by which the image is downsampled before computing SDF.
+    :param threshold: Threshold value for detecting edges in the input image.
+    :return: Computed multi-channel SDF image (shape: new_H x new_W x 4) or None if input is invalid.
+    """
+
+    # Validate input
+    if img_array.ndim != 3 or img_array.shape[2] != 4:
+        logger.warning("Invalid image array: Expected an HxWx4 NumPy array.")
+        return None
 
     height, width, channels = img_array.shape
 
@@ -106,97 +124,31 @@ def compute_multichannel_sdf(img_array: np.ndarray, max_rel_distance: float = 0.
     new_height = height // downsample_factor
     new_width = width // downsample_factor
 
-
     # Analyze which channels have meaningful content
-    channel_content = analyze_image_channels(img_array)
+    channels_have_content = analyze_image_channels(img_array)
+    channel_count = sum(channels_have_content)
 
-    # Compute SDF for meaningful channels
-    channels_sdf = []
-    for idx, has_content in enumerate(channel_content):
+    if channel_count == 0:
+        logger.warning("No significant content detected in any channel. Returning None.")
+        return None
+
+    # Single-channel SDF computation
+    elif channel_count == 1:
+        idx = channels_have_content.index(True)
+        logger.debug(f"Single-channel SDF computation for channel {idx}.")
+        return compute_sdf(img_array[:, :, idx], max_rel_distance, downsample_factor, threshold)
+
+    # Multi-channel SDF computation
+    output_sdf = np.zeros((new_height, new_width, 4), dtype=np.uint8)
+    for idx, has_content in enumerate(channels_have_content):
         if not has_content:
             continue
-        channel_sdf = compute_sdf(img_array[:, :, idx], max_rel_distance, downsample_factor, threshold)
-        channels_sdf.append(channel_sdf)
+        logger.debug(f"Multi-channel SDF computation for channel {idx}...")
+        output_sdf[..., idx] = compute_sdf(img_array[:, :, idx], max_rel_distance, downsample_factor, threshold)
 
-    if len(channels_sdf) == 0:
-        # No meaningful channels - return empty grayscale
-        logger.warning("No channels have significant information")
-        return np.zeros((new_height, new_width), dtype=np.uint8)
-
-    if len(channels_sdf) == 1:
-        logger.debug(f"Only channel has information, returning grayscale SDF")
-        return channels_sdf[0]
-
-    channels_number = max(len(channels_sdf), 3)
-    output = np.zeros((new_height, new_width, channels_number), dtype=np.uint8)
-
-    for idx, channel_sdf in enumerate(channels_sdf):
-        output[..., idx] = channel_sdf
-
-    return output
+    return output_sdf
 
 
-def save_image_array(distance_field: np.ndarray, filepath: Path) -> bool:
-    """
-    Save a distance field as an image with format determined by the array dimensions.
-
-    Automatically determines the appropriate image format based on the array shape:
-    - 2D array (h,w) → Grayscale image
-    - 3D array with 3 channels (h,w,3) → RGB image
-    - 3D array with 4 channels (h,w,4) → RGBA image
-
-    Args:
-        distance_field: NumPy array containing the distance field(s)
-        filepath: Path where the image should be saved
-
-    Returns:
-        bool: True if the image was saved successfully, False otherwise
-
-    Raises:
-        ValueError: If the input array has an unsupported shape
-    """
-    # Ensure array is contiguous and uint8
-    array = np.ascontiguousarray(distance_field).astype(np.uint8)
-
-    # Determine image format based on array dimensions
-    if len(array.shape) == 2:
-        # 2D array - Grayscale
-        height, width = array.shape
-        qimage = QImage(array.data, width, height, width, QImage.Format_Grayscale8)
-        logger.info(f"Saving grayscale image with dimensions {width}x{height}")
-
-    elif len(array.shape) == 3 and array.shape[2] == 3:
-        # 3D array with 3 channels - RGB
-        height, width, _ = array.shape
-        qimage = QImage(array.data, width, height, width * 3, QImage.Format_RGB888)
-        logger.info(f"Saving RGB image with dimensions {width}x{height}")
-
-    elif len(array.shape) == 3 and array.shape[2] == 4:
-        # 3D array with 4 channels - RGBA/ARGB
-        height, width, _ = array.shape
-
-        # Convert to QImage's expected memory format (BGRA for ARGB32)
-        bgra = np.zeros_like(array)
-        bgra[..., 0] = array[..., 3]  # B = B (or A for ARGB)
-        bgra[..., 1] = array[..., 2]  # G = G
-        bgra[..., 2] = array[..., 1]  # R = R
-        bgra[..., 3] = array[..., 0]  # A = A (or B for ARGB)
-
-        qimage = QImage(bgra.data, width, height, width * 4, QImage.Format_ARGB32)
-        logger.info(f"Saving RGBA image with dimensions {width}x{height}")
-
-    else:
-        raise ValueError(f"Unsupported array shape: {array.shape}. Must be (h,w), (h,w,3), or (h,w,4)")
-
-    # Save the image to a file
-    success = qimage.save(str(filepath))
-
-    if success:
-        logger.info(f"Successfully saved image to {filepath}")
-    else:
-        logger.error(f"Failed to save image to {filepath}")
-
-    return success
 
 
 
