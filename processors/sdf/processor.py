@@ -1,12 +1,17 @@
 import converter
 import core.qt_image as qt_image
+import core.metadata as metadata
 import config
 import logging
+from pathlib import Path
+from typing import Union
+import dataclasses as dc
 
 logger = logging.getLogger(__name__)
 
 
-def svg_to_sdf(svg_path, output_dir, rel_distance, svg_resolution, sdf_resolution) -> None:
+def svg_to_sdf(svg_path: Union[str, Path], output_dir: Union[str, Path],
+               rel_distance: float, svg_resolution: int, sdf_resolution: int) -> Union[Path, None]:
     """
     Converts an SVG file to a signed distance field (SDF) and saves the output.
 
@@ -25,17 +30,18 @@ def svg_to_sdf(svg_path, output_dir, rel_distance, svg_resolution, sdf_resolutio
     sdf_image = qt_image.numpy_to_image(sdf_array)
     if sdf_image is None:
         logger.warning(f"Failed to convert SDF array to image for: {svg_path}")
-        return
+        return None
 
     # Determine output filename
     file_postfix = config.OUTPUT_FILE_POSTFIXES[sdf_image.format()]
-    output_path = output_dir / (svg_path.stem + file_postfix + config.OUTPUT_FILE_EXT)
+    output_path = output_dir / (config.OUTPUT_FILE_PREFIX + svg_path.stem + file_postfix + config.OUTPUT_FILE_EXT)
 
     # Save the final image
     if not sdf_image.save(str(output_path)):
         logger.error(f"Failed to save SDF image: {output_path}")
     else:
         logger.info(f"Saved SDF: {output_path}")
+    return output_path
 
 
 def process_sdf() -> None:
@@ -53,5 +59,12 @@ def process_sdf() -> None:
         logger.info(f"Found {len(svg_files)} SVG files in {source_dir}")
 
         for svg_path in svg_files:
-            svg_to_sdf(svg_path, output_dir, config.SDF_RELATIVE_DISTANCE,
+            if not metadata.is_asset_modified(svg_path):
+                logger.debug(f"Asset at a path {svg_path} is not modified. Skipping processing")
+                continue
+
+            logger.info(f"Converting SVG {svg_path} to SDF")
+            exported_path = svg_to_sdf(svg_path, output_dir, config.SDF_RELATIVE_DISTANCE,
                        config.SVG_RENDERING_RESOLUTION, config.SDF_RESOLUTION)
+
+            metadata.refresh_metadata(svg_path, exported_files=[exported_path])
