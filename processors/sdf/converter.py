@@ -1,10 +1,7 @@
-import logging
-from pathlib import Path
-from typing import List
-
 import numpy as np
 import scipy.ndimage as ndi
-from PySide6.QtGui import QImage
+import typing as t
+import logging
 
 # Configure logger
 logging.basicConfig(level=logging.DEBUG)
@@ -61,7 +58,7 @@ def compute_sdf(channel: np.ndarray, max_relative_distance: float = 0.1,
     return normalized_sdf.astype(np.uint8)
 
 
-def analyze_image_channels(image: np.ndarray) -> List[bool]:
+def analyze_image_channels(image: np.ndarray) -> t.List[bool]:
     """
     Analyze an image to determine which channels have meaningful content.
 
@@ -98,7 +95,8 @@ def analyze_image_channels(image: np.ndarray) -> List[bool]:
 
 
 def compute_multichannel_sdf(img_array: np.ndarray, max_rel_distance: float = 0.1,
-                             downsample_factor: int = 4, threshold: int = 127) -> np.ndarray | None:
+                             downsample_factor: int = 4, threshold: int = 127,
+                             channel_mapping: t.Tuple[int] = (0, 1, 2, 3)) -> np.ndarray | None:
     """
     Computes a multi-channel Signed Distance Field (SDF) from a given image.
 
@@ -110,6 +108,7 @@ def compute_multichannel_sdf(img_array: np.ndarray, max_rel_distance: float = 0.
     :param max_rel_distance: Maximum relative distance for SDF computation (0-1 range).
     :param downsample_factor: Factor by which the image is downsampled before computing SDF.
     :param threshold: Threshold value for detecting edges in the input image.
+    :param channel_mapping: A list defining how the channels should be reordered in the output (default is [0, 1, 2, 3] for BGRA).
     :return: Computed multi-channel SDF image (shape: new_H x new_W x 4) or None if input is invalid.
     """
 
@@ -144,7 +143,8 @@ def compute_multichannel_sdf(img_array: np.ndarray, max_rel_distance: float = 0.
         if not has_content:
             continue
         logger.debug(f"Multi-channel SDF computation for channel {idx}...")
-        output_sdf[..., idx] = compute_sdf(img_array[:, :, idx], max_rel_distance, downsample_factor, threshold)
+        mapped_idx = channel_mapping[idx]
+        output_sdf[..., mapped_idx] = compute_sdf(img_array[:, :, idx], max_rel_distance, downsample_factor, threshold)
 
     return output_sdf
 

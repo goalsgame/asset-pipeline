@@ -24,7 +24,8 @@ def svg_to_sdf(svg_path: Union[str, Path], output_dir: Union[str, Path],
 
     img = qt_image.svg_to_image(svg_path, svg_resolution, rel_distance)
     img_array = qt_image.image_to_numpy(img)
-    sdf_array = converter.compute_multichannel_sdf(img_array, rel_distance, svg_resolution//sdf_resolution)
+    sdf_array = converter.compute_multichannel_sdf(img_array, rel_distance, svg_resolution//sdf_resolution,
+                                                   channel_mapping=config.SDF_CHANNEL_MAPPING)
 
     # Convert SDF to QImage
     sdf_image = qt_image.numpy_to_image(sdf_array)
