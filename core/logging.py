@@ -1,8 +1,8 @@
+import typing as t
 import logging
-from typing import Optional, Literal
 
 # Define log level type for type hints
-LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+LogLevel = t.Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 
 def setup_logging(
@@ -33,7 +33,7 @@ def setup_logging(
     logging.debug("Logging configured")  # This will show if level is DEBUG
 
 
-def get_logger(name: str, level: Optional[LogLevel] = None) -> logging.Logger:
+def get_logger(name: str, level: t.Optional[LogLevel] = None) -> logging.Logger:
     """
     Get a logger with the specified name and optional level.
 

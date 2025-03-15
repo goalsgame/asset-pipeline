@@ -1,12 +1,10 @@
 import numpy as np
 import scipy.ndimage as ndi
 import typing as t
-import logging
 
-# Configure logger
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+import core.logging as logging
 
+logger = logging.get_logger(__name__)
 
 
 def compute_sdf(channel: np.ndarray, max_relative_distance: float = 0.1,

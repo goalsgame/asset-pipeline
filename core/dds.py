@@ -1,6 +1,5 @@
-import struct
-
 import numpy as np
+import struct
 
 
 def save_dds_from_mipmaps(mipmaps, filename):

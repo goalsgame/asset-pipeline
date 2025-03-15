@@ -1,6 +1,6 @@
 from pathlib import Path
-
 from PySide6.QtGui import QImage
+
 
 PROCESSING_PATHS = [
     (Path(r'y:\Common\Textures\Brands\Source'), Path(r'y:\Common\Textures\Brands\Export'))

@@ -1,17 +1,17 @@
-import converter
+from pathlib import Path
+import typing as t
+
 import core.qt_image as qt_image
 import core.metadata as metadata
-import config
-import logging
-from pathlib import Path
-from typing import Union
-import dataclasses as dc
+import core.logging as logging
+import processors.sdf.converter as converter
+import processors.sdf.config as config
 
-logger = logging.getLogger(__name__)
+logger = logging.get_logger(__name__)
 
 
-def svg_to_sdf(svg_path: Union[str, Path], output_dir: Union[str, Path],
-               rel_distance: float, svg_resolution: int, sdf_resolution: int) -> Union[Path, None]:
+def svg_to_sdf(svg_path: t.Union[str, Path], output_dir: t.Union[str, Path],
+               rel_distance: float, svg_resolution: int, sdf_resolution: int) -> t.Union[Path, None]:
     """
     Converts an SVG file to a signed distance field (SDF) and saves the output.
 

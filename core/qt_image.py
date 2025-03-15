@@ -1,14 +1,14 @@
-import logging
-import math
-from pathlib import Path
-from typing import Optional, Union, Tuple
-
-import numpy as np
 from PySide6.QtCore import QRectF
 from PySide6.QtGui import QImage, QPainter
 from PySide6.QtSvg import QSvgRenderer
+from pathlib import Path
+import typing as t
+import numpy as np
+import math
 
-logger = logging.getLogger(__name__)
+import core.logging as logging
+
+logger = logging.get_logger(__name__)
 
 
 def nearest_power_of_2(n: float, threshold: float = 0.05) -> int:
@@ -26,10 +26,10 @@ def nearest_power_of_2(n: float, threshold: float = 0.05) -> int:
     return lower if (n - lower) / lower < threshold else higher
 
 
-def calculate_render_dimensions(svg_bounds: Tuple[float, float],
+def calculate_render_dimensions(svg_bounds: t.Tuple[float, float],
                                 max_resolution: int,
                                 margin: float
-                               ) -> Tuple[Tuple[int, int], Tuple[float, float, float, float]]:
+                               ) -> t.Tuple[t.Tuple[int, int], t.Tuple[float, float, float, float]]:
     """
     Determines the optimal power-of-2 texture size and the largest render rectangle
     within it, preserving the SVG aspect ratio with a consistent margin.
@@ -68,7 +68,7 @@ def calculate_render_dimensions(svg_bounds: Tuple[float, float],
     return (texture_width, texture_height), (offset_x, offset_y, render_width, render_height)
 
 
-def svg_to_image(svg_path: Union[str, Path], max_resolution: int = 512, margin:float=0.1) -> Optional[QImage]:
+def svg_to_image(svg_path: t.Union[str, Path], max_resolution: int = 512, margin:float=0.1) -> t.Optional[QImage]:
     """
     Convert an SVG file to a QImage with specified dimensions.
 

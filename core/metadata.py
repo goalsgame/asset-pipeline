@@ -4,25 +4,26 @@ GOALS Source Asset Metadata (.gsam) Handler
 Minimal module for handling GOALS source asset metadata files (.gsam).
 Provides functionality to track source assets and their exported derivatives.
 """
-
+from pathlib import Path
+import dataclasses as dc
+import typing as t
 import hashlib
 import json
 import uuid
-from dataclasses import dataclass, asdict, field, fields, replace
-from pathlib import Path
-import typing as t
-import logging
 
-logger = logging.getLogger(__name__)
+import core.logging as logging
+
+logger = logging.get_logger(__name__)
 
 METADATA_EXTENSION = ".gsam"
 
-@dataclass(frozen=True)
+
+@dc.dataclass(frozen=True)
 class AssetMetadata:
     """Immutable metadata for a source asset."""
     uuid: str
     checksum: str
-    exported_files: t.List[Path] = field(default_factory=list)
+    exported_files: t.List[Path] = dc.field(default_factory=list)
     version: int = 1
 
 # Type definition for update operations
@@ -85,10 +86,10 @@ def save_metadata(metadata: AssetMetadata, metadata_path: t.Union[str, Path]) ->
     """
 
     # Convert to dict
-    metadata_dict = asdict(metadata)
+    metadata_dict = dc.asdict(metadata)
 
     # Convert List[Path] fields dynamically
-    for field_info in fields(metadata):
+    for field_info in dc.fields(metadata):
         if t.get_origin(field_info.type) is list and t.get_args(field_info.type)[0] is Path:
             metadata_dict[field_info.name] = [str(p) for p in metadata_dict[field_info.name]]
 
@@ -111,7 +112,7 @@ def load_metadata(metadata_path: t.Union[str, Path]) -> AssetMetadata:
         metadata_dict = json.load(f)
 
     # Get field types of AssetMetadata
-    field_types = {field.name: field.type for field in fields(AssetMetadata)}
+    field_types = {field.name: field.type for field in dc.fields(AssetMetadata)}
 
     for field_name, field_type in field_types.items():
         if t.get_origin(field_type) is list:
@@ -166,7 +167,7 @@ def refresh_metadata(asset_path: t.Union[str, Path], **changes: t.Unpack[AssetMe
     metadata = retrieve_metadata(asset_path)
 
     # Update the metadata
-    updated_metadata = replace(metadata, **changes, checksum=calculate_checksum(asset_path))
+    updated_metadata = dc.replace(metadata, **changes, checksum=calculate_checksum(asset_path))
 
     # Save the updated metadata
     save_metadata(updated_metadata, metadata_path)
