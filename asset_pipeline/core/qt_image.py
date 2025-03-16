@@ -6,7 +6,7 @@ import typing as t
 import numpy as np
 import math
 
-import core.logging as logging
+import asset_pipeline.core.logging as logging
 
 logger = logging.get_logger(__name__)
 

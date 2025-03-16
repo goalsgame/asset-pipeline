@@ -2,7 +2,7 @@ import numpy as np
 import scipy.ndimage as ndi
 import typing as t
 
-import core.logging as logging
+import asset_pipeline.core.logging as logging
 
 logger = logging.get_logger(__name__)
 

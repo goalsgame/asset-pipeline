@@ -2,11 +2,11 @@ from pathlib import Path
 import typing as t
 import time
 
-import core.qt_image as qt_image
-import core.metadata as metadata
-import core.logging as logging
-import processors.sdf.converter as converter
-import processors.sdf.config as config
+import asset_pipeline.core.qt_image as qt_image
+import asset_pipeline.core.metadata as metadata
+import asset_pipeline.core.logging as logging
+import asset_pipeline.processors.sdf.converter as converter
+import asset_pipeline.processors.sdf.config as config
 
 logger = logging.get_logger(__name__)
 
@@ -25,7 +25,7 @@ def svg_to_sdf(svg_path: t.Union[str, Path], output_dir: t.Union[str, Path],
 
     img = qt_image.svg_to_image(svg_path, svg_resolution, rel_distance)
     img_array = qt_image.image_to_numpy(img)
-    sdf_array = converter.compute_multichannel_sdf(img_array, rel_distance, svg_resolution//sdf_resolution,
+    sdf_array = converter.compute_multichannel_sdf(img_array, rel_distance, svg_resolution // sdf_resolution,
                                                    channel_mapping=config.SDF_CHANNEL_MAPPING)
 
     # Convert SDF to QImage
@@ -79,7 +79,7 @@ def process_sdf() -> None:
 
             start_time = time.perf_counter()
             exported_path = svg_to_sdf(svg_path, output_dir, config.SDF_RELATIVE_DISTANCE,
-                       config.SVG_RENDERING_RESOLUTION, config.SDF_RESOLUTION)
+                                       config.SVG_RENDERING_RESOLUTION, config.SDF_RESOLUTION)
             elapsed_time = time.perf_counter() - start_time
             logger.info(f"Saved: {exported_path} ({elapsed_time:.2f}s)")
 

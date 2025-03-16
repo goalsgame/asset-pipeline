@@ -12,7 +12,7 @@ import hashlib
 import json
 import uuid
 
-import core.logging as logging
+import asset_pipeline.core.logging as logging
 
 logger = logging.get_logger(__name__)
 
