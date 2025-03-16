@@ -1,5 +1,6 @@
 from pathlib import Path
 import typing as t
+import time
 
 import core.qt_image as qt_image
 import core.metadata as metadata
@@ -40,8 +41,7 @@ def svg_to_sdf(svg_path: t.Union[str, Path], output_dir: t.Union[str, Path],
     # Save the final image
     if not sdf_image.save(str(output_path)):
         logger.error(f"Failed to save SDF image: {output_path}")
-    else:
-        logger.info(f"Saved SDF: {output_path}")
+
     return output_path
 
 
@@ -50,22 +50,39 @@ def process_sdf() -> None:
     Processes all files from configured source directories, converting them to SDF format.
     """
     for source_dir, output_dir in config.PROCESSING_PATHS:
-        logger.info(f'Processing source directory {source_dir}')
+        logger.info(f'Scanning source asset directory: {source_dir}')
 
         if not source_dir.is_dir():
-            logger.warning(f"Invalid source directory: {source_dir}")
+            logger.warning(f"Invalid directory: {source_dir}")
             continue
 
         svg_files = list(source_dir.glob("*.svg"))
-        logger.info(f"Found {len(svg_files)} SVG files in {source_dir}")
+        logger.info(f"Found {len(svg_files)} SVG assets")
 
+        # Identify new and modified assets, count them, and store them in pending_files for processing.
+        pending_files = []
+        status_counts = {metadata.AssetStatus.NEW: 0, metadata.AssetStatus.MODIFIED: 0}
         for svg_path in svg_files:
-            if not metadata.is_asset_modified(svg_path):
-                logger.debug(f"Asset at a path {svg_path} is not modified. Skipping processing")
-                continue
+            status = metadata.get_asset_status(svg_path)
+            if status in status_counts:
+                status_counts[status] += 1
+                pending_files.append(svg_path)
 
-            logger.info(f"Converting SVG {svg_path} to SDF")
+        if not pending_files:
+            logger.info(f"No new or modified assets found. All files are already up to date.")
+            continue
+
+        logger.info(f"Detected {status_counts[metadata.AssetStatus.NEW]} new assets, "
+                    f"{status_counts[metadata.AssetStatus.MODIFIED]} modified assets.")
+        for svg_path in pending_files:
+            logger.info(f"Processing: {svg_path}")
+
+            start_time = time.perf_counter()
             exported_path = svg_to_sdf(svg_path, output_dir, config.SDF_RELATIVE_DISTANCE,
                        config.SVG_RENDERING_RESOLUTION, config.SDF_RESOLUTION)
+            elapsed_time = time.perf_counter() - start_time
+            logger.info(f"Saved: {exported_path} ({elapsed_time:.2f}s)")
 
             metadata.refresh_metadata(svg_path, exported_files=[exported_path])
+
+        logger.info(f"Exported SDF files to: {output_dir}")

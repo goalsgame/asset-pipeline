@@ -4,6 +4,7 @@ GOALS Source Asset Metadata (.gsam) Handler
 Minimal module for handling GOALS source asset metadata files (.gsam).
 Provides functionality to track source assets and their exported derivatives.
 """
+from enum import Enum
 from pathlib import Path
 import dataclasses as dc
 import typing as t
@@ -31,6 +32,15 @@ class AssetMetadataUpdate(t.TypedDict, total=False):
     """TypedDict for metadata update operations with optional fields."""
     exported_files: t.NotRequired[t.List[Path]]
 
+
+
+class AssetStatus(Enum):
+    """
+    Enum representing the status of an asset during processing.
+    """
+    NEW = "new"
+    MODIFIED = "modified"
+    UNCHANGED = "unchanged"
 
 
 def get_metadata_path(asset_path: t.Union[str, Path]) -> Path:
@@ -96,7 +106,7 @@ def save_metadata(metadata: AssetMetadata, metadata_path: t.Union[str, Path]) ->
     with open(metadata_path, "w") as f:
         json.dump(metadata_dict, f, indent=2)
 
-    logger.info(f"Created metadata file: {metadata_path}")
+    logger.debug(f"Saved metadata file: {metadata_path}")
     return metadata_path
 
 
@@ -176,25 +186,25 @@ def refresh_metadata(asset_path: t.Union[str, Path], **changes: t.Unpack[AssetMe
     return updated_metadata
 
 
-
-def is_asset_modified(
-        asset_path: t.Union[str, Path]
-) -> bool:
+def get_asset_status(asset_path: t.Union[str, Path]) -> AssetStatus:
     """
-    Check if an asset has been modified since its metadata was created.
+    Determines the status of an asset.
 
     :param asset_path: Path to the asset file to check
-    :returns: True if the asset has been modified, False if unchanged
+    :returns:
+        AssetStatus.NEW        - if the asset has no metadata (never processed before)
+        AssetStatus.MODIFIED   - if the asset has metadata but was changed
+        AssetStatus.UNCHANGED  - if the asset is unchanged
     """
     asset_path = Path(asset_path)
     metadata_path  = get_metadata_path(asset_path)
 
     if not Path(metadata_path).exists():
-        # If no metadata exists, consider the asset as modified
-        return True
+        return AssetStatus.NEW
 
     metadata = load_metadata(metadata_path)
     current_checksum = calculate_checksum(asset_path)
+    if current_checksum != metadata.checksum:
+        return AssetStatus.MODIFIED
 
-    # Return True if checksums don't match (asset is modified)
-    return current_checksum != metadata.checksum
+    return AssetStatus.UNCHANGED
