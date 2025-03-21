@@ -29,37 +29,61 @@ def load_json(file_path: t.Union[str, Path]) -> t.Any:
         return json.load(f)
 
 
+# Recursive helper for serialization:
+def _convert_for_serialization(value: t.Any) -> t.Any:
+    if isinstance(value, Path):
+        return str(value)
+    elif isinstance(value, list):
+        return [_convert_for_serialization(item) for item in value]
+    elif isinstance(value, dict):
+        return {k: _convert_for_serialization(v) for k, v in value.items()}
+    else:
+        return value
+
+
 def serialize_dataclass(instance: t.Any) -> dict:
     """
     Convert a dataclass instance to a dictionary.
-    Handles conversion of non-JSON-friendly types like Path.
-
-    :param instance: Dataclass instance to serialize
-    :returns: Dictionary representation suitable for JSON
+    Handles conversion of non-JSON-friendly types like Path and nested dataclasses.
     """
     data = dc.asdict(instance)
-    for field_info in dc.fields(instance):
-        if t.get_origin(field_info.type) is list:
-            # Check if it's a list of Path objects
-            list_args = t.get_args(field_info.type)
-            if list_args and list_args[0] is Path:
-                data[field_info.name] = [str(item) for item in data[field_info.name]]
-    return data
+    return _convert_for_serialization(data)
 
+
+# Helper for deserialization: recursively convert values based on the field type.
+def _convert_to_field(field_type: t.Any, value: t.Any) -> t.Any:
+    if value is None:
+        return value
+
+    # Direct conversion for Path
+    if field_type is Path:
+        return Path(value)
+
+    # If the field is a dataclass, recursively deserialize it.
+    if dc.is_dataclass(field_type):
+        return deserialize_dataclass(field_type, value)
+
+    # If the field is a list, check its inner type.
+    origin = t.get_origin(field_type)
+    if origin is list:
+        (inner_type,) = t.get_args(field_type)
+        if inner_type is Path:
+            return [Path(item) for item in value]
+        elif dc.is_dataclass(inner_type):
+            return [deserialize_dataclass(inner_type, item) for item in value]
+        else:
+            return value
+
+    # For any other type, assume it is JSON–friendly.
+    return value
 
 def deserialize_dataclass(cls: t.Type, data: dict) -> t.Any:
     """
     Convert a dictionary into a dataclass instance.
-    Handles conversion of fields like lists of Paths.
-
-    :param cls: Dataclass type
-    :param data: Dictionary with data
-    :returns: Dataclass instance
+    Handles conversion of fields like lists of Paths or nested dataclasses.
     """
-    field_types = {field.name: field.type for field in dc.fields(cls)}
-    for field_name, field_type in field_types.items():
-        if t.get_origin(field_type) is list:
-            list_args = t.get_args(field_type)
-            if list_args and list_args[0] is Path:
-                data[field_name] = [Path(p) for p in data.get(field_name, [])]
-    return cls(**data)
+    field_values = {}
+    for field in dc.fields(cls):
+        raw_value = data.get(field.name)
+        field_values[field.name] = _convert_to_field(field.type, raw_value)
+    return cls(**field_values)

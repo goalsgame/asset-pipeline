@@ -13,7 +13,7 @@
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <option name="SCRIPT_NAME" value="asset_pipeline.processors.sdf" />
-    <option name="PARAMETERS" value="--debug" />
+    <option name="PARAMETERS" value="--debug --config configs/sdf_processor.cfg" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="true" />

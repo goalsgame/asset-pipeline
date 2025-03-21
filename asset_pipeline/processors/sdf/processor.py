@@ -6,7 +6,7 @@ import asset_pipeline.core.qt_image as qt_image
 import asset_pipeline.core.datafiles.metadata as metadata
 import asset_pipeline.core.logging as logging
 import asset_pipeline.processors.sdf.converter as converter
-import asset_pipeline.processors.sdf.config as config
+import asset_pipeline.processors.sdf.config as cfg
 
 logger = logging.get_logger(__name__)
 
@@ -26,7 +26,7 @@ def svg_to_sdf(svg_path: t.Union[str, Path], output_dir: t.Union[str, Path],
     img = qt_image.svg_to_image(svg_path, svg_resolution, rel_distance)
     img_array = qt_image.image_to_numpy(img)
     sdf_array = converter.compute_multichannel_sdf(img_array, rel_distance, svg_resolution // sdf_resolution,
-                                                   channel_mapping=config.SDF_CHANNEL_MAPPING)
+                                                   channel_mapping=cfg.SDF_CHANNEL_MAPPING)
 
     # Convert SDF to QImage
     sdf_image = qt_image.numpy_to_image(sdf_array)
@@ -35,8 +35,8 @@ def svg_to_sdf(svg_path: t.Union[str, Path], output_dir: t.Union[str, Path],
         return None
 
     # Determine output filename
-    file_postfix = config.OUTPUT_FILE_POSTFIXES[sdf_image.format()]
-    output_path = output_dir / (config.OUTPUT_FILE_PREFIX + svg_path.stem + file_postfix + config.OUTPUT_FILE_EXT)
+    file_postfix = cfg.OUTPUT_FILE_POSTFIXES[sdf_image.format()]
+    output_path = output_dir / (cfg.OUTPUT_FILE_PREFIX + svg_path.stem + file_postfix + cfg.OUTPUT_FILE_EXT)
 
     # Save the final image
     if not sdf_image.save(str(output_path)):
@@ -45,18 +45,19 @@ def svg_to_sdf(svg_path: t.Union[str, Path], output_dir: t.Union[str, Path],
     return output_path
 
 
-def process_sdf() -> None:
+def process_sdf(config: cfg.SdfProcessorConfig) -> None:
     """
     Processes all files from configured source directories, converting them to SDF format.
+    :param config: SDF Processor config object
     """
-    for source_dir, output_dir in config.PROCESSING_PATHS:
-        logger.info(f'Scanning source asset directory: {source_dir}')
+    for paths in config.processing_paths:
+        logger.info(f'Scanning source asset directory: {paths.source_dir}')
 
-        if not source_dir.is_dir():
-            logger.warning(f"Invalid directory: {source_dir}")
+        if not paths.source_dir.is_dir():
+            logger.warning(f"Invalid directory: {paths.source_dir}")
             continue
 
-        svg_files = list(source_dir.glob("*.svg"))
+        svg_files = list(paths.source_dir.glob("*.svg"))
         logger.info(f"Found {len(svg_files)} SVG assets")
 
         # Identify new and modified assets, count them, and store them in pending_files for processing.
@@ -78,11 +79,11 @@ def process_sdf() -> None:
             logger.info(f"Processing: {svg_path}")
 
             start_time = time.perf_counter()
-            exported_path = svg_to_sdf(svg_path, output_dir, config.SDF_RELATIVE_DISTANCE,
-                                       config.SVG_RENDERING_RESOLUTION, config.SDF_RESOLUTION)
+            exported_path = svg_to_sdf(svg_path, paths.output_dir, config.max_relative_distance,
+                                       config.svg_rasterization_size, config.max_output_size)
             elapsed_time = time.perf_counter() - start_time
             logger.info(f"Saved: {exported_path} ({elapsed_time:.2f}s)")
 
             metadata.refresh_metadata(svg_path, exported_files=[exported_path])
 
-        logger.info(f"Exported SDF files to: {output_dir}")
+        logger.info(f"Exported SDF files to: {paths.output_dir}")
