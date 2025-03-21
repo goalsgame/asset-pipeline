@@ -9,10 +9,10 @@ from pathlib import Path
 import dataclasses as dc
 import typing as t
 import hashlib
-import json
 import uuid
 
 import asset_pipeline.core.logging as logging
+import asset_pipeline.core.datafiles.serialization as ser
 
 logger = logging.get_logger(__name__)
 
@@ -95,17 +95,8 @@ def save_metadata(metadata: AssetMetadata, metadata_path: t.Union[str, Path]) ->
     :returns: Path to the saved metadata file
     """
 
-    # Convert to dict
-    metadata_dict = dc.asdict(metadata)
-
-    # Convert List[Path] fields dynamically
-    for field_info in dc.fields(metadata):
-        if t.get_origin(field_info.type) is list and t.get_args(field_info.type)[0] is Path:
-            metadata_dict[field_info.name] = [str(p) for p in metadata_dict[field_info.name]]
-
-    with open(metadata_path, "w") as f:
-        json.dump(metadata_dict, f, indent=2)
-
+    metadata_dict = ser.serialize_dataclass(metadata)
+    ser.save_json(metadata_dict, metadata_path)
     logger.debug(f"Saved metadata file: {metadata_path}")
     return metadata_path
 
@@ -118,22 +109,8 @@ def load_metadata(metadata_path: t.Union[str, Path]) -> AssetMetadata:
     :returns: Asset metadata object
     """
 
-    with open(metadata_path, "r") as f:
-        metadata_dict = json.load(f)
-
-    # Get field types of AssetMetadata
-    field_types = {field.name: field.type for field in dc.fields(AssetMetadata)}
-
-    for field_name, field_type in field_types.items():
-        if t.get_origin(field_type) is list:
-            list_type = t.get_args(field_type)[0]  # Get the inner type of List[T]
-
-            if list_type is Path:
-                # Convert List[str] to List[Path]
-                metadata_dict[field_name] = [Path(p) for p in metadata_dict[field_name]]
-            # Extend here if you want to handle other conversions (e.g., List[int], List[float])
-
-    return AssetMetadata(**metadata_dict)
+    metadata_dict = ser.load_json(metadata_path)
+    return ser.deserialize_dataclass(AssetMetadata, metadata_dict)
 
 
 def retrieve_metadata(asset_path: t.Union[str, Path]) -> AssetMetadata:

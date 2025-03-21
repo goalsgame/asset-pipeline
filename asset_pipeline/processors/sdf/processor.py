@@ -3,7 +3,7 @@ import typing as t
 import time
 
 import asset_pipeline.core.qt_image as qt_image
-import asset_pipeline.core.metadata as metadata
+import asset_pipeline.core.datafiles.metadata as metadata
 import asset_pipeline.core.logging as logging
 import asset_pipeline.processors.sdf.converter as converter
 import asset_pipeline.processors.sdf.config as config

@@ -3,7 +3,7 @@ from PySide6.QtGui import QImage
 
 
 PROCESSING_PATHS = [
-    (Path(r'y:\Common\Textures\Brands\Source'), Path(r'y:\Common\Textures\Brands\Export'))
+    (Path(r'y:\Common\Textures\Brands\FigmaAssets'), Path(r'y:\Common\Textures\Brands\Export'))
 ]
 
 SVG_RENDERING_RESOLUTION = 4096
