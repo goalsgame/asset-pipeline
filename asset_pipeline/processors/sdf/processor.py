@@ -39,7 +39,7 @@ def svg_to_sdf(svg_path: t.Union[str, Path], output_dir: t.Union[str, Path],
     output_path = output_dir / (cfg.OUTPUT_FILE_PREFIX + svg_path.stem + file_postfix + cfg.OUTPUT_FILE_EXT)
 
     # Save the final image
-    if not sdf_image.save(str(output_path)):
+    if not qt_image.save_image(sdf_image, output_path):
         logger.error(f"Failed to save SDF image: {output_path}")
 
     return output_path

@@ -5,6 +5,8 @@ from pathlib import Path
 import typing as t
 import numpy as np
 import math
+import os
+import stat
 
 import asset_pipeline.core.logging as logging
 
@@ -159,3 +161,21 @@ def numpy_to_image(img_array: np.ndarray) -> QImage | None:
     # Unsupported format
     logger.warning(f"Unsupported array format: shape {img_array.shape}, dtype {img_array.dtype}")
     return None
+
+def save_image(image: QImage, file_path: t.Union[str, Path]) -> bool:
+    """
+    Saves a QImage to the specified file path.
+    :param image: The image to save.
+    :param file_path: The file path where the image should be saved.
+    :return: True if the image was saved successfully, False otherwise.
+    """
+    file_path = str(file_path)
+
+    # Check if file exists and is read-only and removes read-only flag (before we introduce P4 support)
+    if os.path.exists(file_path):
+        file_stat = os.stat(file_path)
+        if not file_stat.st_mode & stat.S_IWRITE:
+            os.chmod(file_path, file_stat.st_mode | stat.S_IWRITE)
+
+    # Save the image (this will now work)
+    return image.save(file_path)
