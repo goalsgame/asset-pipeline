@@ -2,7 +2,7 @@ from pathlib import Path
 import typing as t
 import time
 
-import asset_pipeline.core.qt_image as qt_image
+import asset_pipeline.core.textures.qt_image as qt_image
 import asset_pipeline.core.datafiles.metadata as metadata
 import asset_pipeline.core.logging as logging
 import asset_pipeline.processors.sdf.converter as converter
