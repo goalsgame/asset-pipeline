@@ -1,15 +1,19 @@
 from pathlib import Path
 import typing as t
 import time
+import P4
 
 import asset_pipeline.core.qt_image as qt_image
 import asset_pipeline.core.datafiles.metadata as metadata
+import asset_pipeline.core.perforce as perforce
 import asset_pipeline.core.logging as logging
 import asset_pipeline.processors.sdf.converter as converter
 import asset_pipeline.processors.sdf.config as cfg
 
 logger = logging.get_logger(__name__)
 
+
+PERFORCE_CHANGELIST_KEYWORD = "[SDF Processing]"
 
 def svg_to_sdf(svg_path: t.Union[str, Path], output_dir: t.Union[str, Path],
                rel_distance: float, svg_resolution: int, sdf_resolution: int) -> t.Union[Path, None]:
@@ -45,11 +49,13 @@ def svg_to_sdf(svg_path: t.Union[str, Path], output_dir: t.Union[str, Path],
     return output_path
 
 
-def process_sdf(config: cfg.SdfProcessorConfig) -> None:
+def process_sdf(config: cfg.SdfProcessorConfig, p4: P4) -> None:
     """
     Processes all files from configured source directories, converting them to SDF format.
     :param config: SDF Processor config object
     """
+    pending_changelist = None
+
     for paths in config.processing_paths:
         logger.info(f'Scanning source asset directory: {paths.source_dir}')
 
@@ -75,6 +81,11 @@ def process_sdf(config: cfg.SdfProcessorConfig) -> None:
 
         logger.info(f"Detected {status_counts[metadata.AssetStatus.NEW]} new assets, "
                     f"{status_counts[metadata.AssetStatus.MODIFIED]} modified assets.")
+
+        # get existing or create new changelist for SDF processor
+        if not pending_changelist:
+            pending_changelist = perforce.retrieve_changelist_by_keyword(p4, PERFORCE_CHANGELIST_KEYWORD)
+
         for svg_path in pending_files:
             logger.info(f"Processing: {svg_path}")
 

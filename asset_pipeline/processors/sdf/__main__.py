@@ -1,6 +1,7 @@
 from pathlib import Path
 import argparse
 import asset_pipeline.core.logging as logging
+import asset_pipeline.core.perforce as perforce
 import asset_pipeline.processors.sdf.processor as processor
 import asset_pipeline.processors.sdf.config as cfg
 
@@ -24,7 +25,9 @@ def main() -> None:
     config = cfg.load_config(config_path)
     logger.debug(f"Loaded config: {config}")
 
-    processor.process_sdf(config)
+    # Open perforce connection and process files
+    with perforce.connection(perforce.Depot.GAME_SOURCE_CONTENT) as p4:
+        processor.process_sdf(config, p4)
 
 if __name__ == "__main__":
     main()
