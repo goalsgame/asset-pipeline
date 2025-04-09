@@ -1,6 +1,10 @@
 import numpy as np
 import struct
 
+import asset_pipeline.core.logging as logging
+
+logger = logging.get_logger(__name__)
+
 
 def save_dds_from_mipmaps(mipmaps, filename):
     """
@@ -91,7 +95,7 @@ def save_dds_from_mipmaps(mipmaps, filename):
         f.write(header)
         for mip in mipmaps:
             f.write(mip.tobytes())
-    print(f"DDS file '{filename}' written successfully with {mip_count} mip levels.")
+    logger.debug(f"DDS file '{filename}' written successfully with {mip_count} mip levels.")
 
 
 def test_save_dds():
@@ -127,7 +131,3 @@ def test_save_dds():
 
     # Save the DDS file with the list of mipmaps.
     save_dds_from_mipmaps(mip_levels, "test_mips.dds")
-
-
-if __name__ == '__main__':
-    test_save_dds()
